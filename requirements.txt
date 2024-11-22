@@ -3,3 +3,5 @@ numpy
 seaborn
 matplot
 plotly
+streamlit
+scipy
