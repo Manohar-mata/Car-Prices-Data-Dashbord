@@ -3,6 +3,70 @@ import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 from scipy.stats import pearsonr
+import numpy as np
+
+# Set page configuration
+st.set_page_config(
+    page_title="Car Data Analysis Dashboard",
+    page_icon="🚗",
+    layout="wide"
+)
+
+# Custom styling
+st.markdown("""
+    <style>
+    .main {
+        padding: 1rem 2rem;
+    }
+    .stPlot {
+        background-color: white;
+        border-radius: 5px;
+        padding: 1rem;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    h1, h2, h3 {
+        color: #2c3e50;
+        margin-bottom: 1rem;
+    }
+    .stSelectbox {
+        margin-bottom: 1rem;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
+# Data loading function with error handling
+@st.cache_data
+def load_data():
+    try:
+        path = 'https://raw.githubusercontent.com/klamsal/Fall2024Exam/refs/heads/main/CleanedAutomobile.csv'
+        df = pd.read_csv(path)
+        return df
+    except Exception as e:
+        st.error(f"Error loading data: {str(e)}")
+        return None
+
+# Safe correlation calculation
+def calculate_correlation(x, y):
+    try:
+        mask = ~(np.isinf(x) | np.isinf(y) | np.isnan(x) | np.isnan(y))
+        x_clean = x[mask]
+        y_clean = y[mask]
+        
+        if len(x_clean) < 2 or len(y_clean) < 2:
+            return None, None
+            
+        return pearsonr(x_clean, y_clean)
+    except Exception as e:
+        st.warning(f"Could not calculate correlation: {str(e)}")
+        return None, None
+
+# Function to create and style plots
+def style_plot(fig, title):
+    plt.title(title, pad=20)
+    plt.tight_layout()
+    fig.set_facecolor('white')
+    plt.style.use('seaborn')
+    return fig
 
 # Sidebar navigation
 st.sidebar.title("Navigation")
@@ -11,86 +75,157 @@ options = st.sidebar.radio(
 )
 
 # Load data
-@st.cache_data
-def load_data():
-    path = 'https://raw.githubusercontent.com/klamsal/Fall2024Exam/refs/heads/main/CleanedAutomobile.csv'
-    return pd.read_csv(path)
-
 df = load_data()
 
-# Title and Introduction
+if df is None:
+    st.error("Failed to load data. Please check the data source and try again.")
+    st.stop()
+
+# Home page
 if options == "Home":
-    st.title("Data Analysis Dashboard")
-    st.write("Welcome to the Data Analysis Dashboard! Use the sidebar to explore the dataset and visualize relationships.")
+    st.title("Car Data Analysis Dashboard")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("""
+            ### 📊 Dashboard Features
+            - Interactive data exploration
+            - Multiple visualization types
+            - Statistical analysis
+            - Real-time correlations
+        """)
+    
+    with col2:
+        st.markdown(f"""
+            ### 📈 Dataset Overview
+            - Total Records: {len(df)}
+            - Features: {len(df.columns)}
+            - Numeric Features: {len(df.select_dtypes(include=['float64', 'int64']).columns)}
+            - Categorical Features: {len(df.select_dtypes(include=['object']).columns)}
+        """)
 
-# Data Overview Section
-if options == "Data Overview":
-    st.header("Data Overview")
-    st.write("### Dataset Preview")
-    st.write(df.head())
+# Data Overview section
+elif options == "Data Overview":
+    st.title("Data Overview")
+    
+    tab1, tab2 = st.tabs(["Data Preview", "Statistics"])
+    
+    with tab1:
+        st.dataframe(df.head(10), use_container_width=True)
+        
+    with tab2:
+        st.dataframe(df.describe(), use_container_width=True)
 
-    st.write("### Descriptive Statistics")
-    st.write(df.describe())
-
-# Visualizations Section
-if options == "Visualizations":
-    st.sidebar.subheader("Visualization Types")
+# Visualizations section
+elif options == "Visualizations":
+    st.title("Data Visualizations")
+    
+    # Filter numeric and categorical columns
+    numeric_df = df.select_dtypes(include=["float64", "int64"])
+    categorical_columns = df.select_dtypes(include=["object"]).columns
+    
+    # Visualization type selector
     vis_type = st.sidebar.radio(
         "Select Visualization Type:",
         ["Scatterplot", "Line Plot", "Boxplot", "Violin Plot", "Pairplot"]
     )
-
-    numeric_df = df.select_dtypes(include=["float64", "int"])  # Filter numeric columns
-    categorical_columns = df.select_dtypes(include=["object"]).columns  # Filter categorical columns
-
+    
+    # Set figure size
+    plt.figure(figsize=(10, 6))
+    
     # Scatterplot
     if vis_type == "Scatterplot":
-        st.write("### Scatterplot with p-value")
-        scatter_x = st.selectbox("Select X-axis variable:", numeric_df.columns)
-        scatter_y = st.selectbox("Select Y-axis variable:", numeric_df.columns)
+        st.subheader("Scatterplot Analysis")
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            scatter_x = st.selectbox("Select X-axis variable:", numeric_df.columns)
+        with col2:
+            scatter_y = st.selectbox("Select Y-axis variable:", numeric_df.columns)
+            
         if scatter_x and scatter_y:
-            fig, ax = plt.subplots()
+            fig, ax = plt.subplots(figsize=(10, 6))
             sns.scatterplot(data=numeric_df, x=scatter_x, y=scatter_y, ax=ax)
-            # Calculate and display Pearson correlation and p-value
-            correlation, p_value = pearsonr(numeric_df[scatter_x], numeric_df[scatter_y])
-            st.write(f"**Pearson Correlation**: {correlation:.2f}")
-            st.write(f"**P-value**: {p_value:.2e}")
-            st.pyplot(fig)
-
+            
+            # Calculate correlation
+            correlation, p_value = calculate_correlation(numeric_df[scatter_x], numeric_df[scatter_y])
+            
+            if correlation is not None:
+                st.write(f"**Pearson Correlation**: {correlation:.2f}")
+                st.write(f"**P-value**: {p_value:.2e}")
+            
+            st.pyplot(style_plot(fig, f"{scatter_x} vs {scatter_y}"))
+    
     # Line Plot
     elif vis_type == "Line Plot":
-        st.write("### Line Plot")
-        line_x = st.selectbox("Select X-axis variable:", numeric_df.columns)
-        line_y = st.selectbox("Select Y-axis variable:", numeric_df.columns)
+        st.subheader("Line Plot Analysis")
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            line_x = st.selectbox("Select X-axis variable:", numeric_df.columns)
+        with col2:
+            line_y = st.selectbox("Select Y-axis variable:", numeric_df.columns)
+            
         if line_x and line_y:
-            fig, ax = plt.subplots()
+            fig, ax = plt.subplots(figsize=(10, 6))
             sns.lineplot(data=numeric_df, x=line_x, y=line_y, ax=ax)
-            st.pyplot(fig)
-
+            st.pyplot(style_plot(fig, f"Trend: {line_x} vs {line_y}"))
+    
     # Boxplot
     elif vis_type == "Boxplot":
-        st.write("### Boxplot for Categorical Variables")
-        box_x = st.selectbox("Select categorical variable (X-axis):", categorical_columns)
-        box_y = st.selectbox("Select numeric variable (Y-axis):", numeric_df.columns)
+        st.subheader("Boxplot Analysis")
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            box_x = st.selectbox("Select categorical variable:", categorical_columns)
+        with col2:
+            box_y = st.selectbox("Select numeric variable:", numeric_df.columns)
+            
         if box_x and box_y:
-            fig, ax = plt.subplots()
+            fig, ax = plt.subplots(figsize=(10, 6))
             sns.boxplot(data=df, x=box_x, y=box_y, ax=ax)
-            st.pyplot(fig)
-
+            plt.xticks(rotation=45)
+            st.pyplot(style_plot(fig, f"Distribution of {box_y} by {box_x}"))
+    
     # Violin Plot
     elif vis_type == "Violin Plot":
-        st.write("### Violin Plot for Categorical Variables")
-        violin_x = st.selectbox("Select categorical variable (X-axis):", categorical_columns)
-        violin_y = st.selectbox("Select numeric variable (Y-axis):", numeric_df.columns)
+        st.subheader("Violin Plot Analysis")
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            violin_x = st.selectbox("Select categorical variable:", categorical_columns)
+        with col2:
+            violin_y = st.selectbox("Select numeric variable:", numeric_df.columns)
+            
         if violin_x and violin_y:
-            fig, ax = plt.subplots()
+            fig, ax = plt.subplots(figsize=(10, 6))
             sns.violinplot(data=df, x=violin_x, y=violin_y, ax=ax)
-            st.pyplot(fig)
-
+            plt.xticks(rotation=45)
+            st.pyplot(style_plot(fig, f"Distribution of {violin_y} by {violin_x}"))
+    
     # Pairplot
     elif vis_type == "Pairplot":
-        st.write("### Pairplot of Numeric Variables")
-        selected_vars = st.multiselect("Select variables to include in pairplot:", numeric_df.columns, default=numeric_df.columns[:3])
+        st.subheader("Pairplot Analysis")
+        
+        selected_vars = st.multiselect(
+            "Select variables (max 4 recommended):",
+            numeric_df.columns,
+            default=list(numeric_df.columns[:3])
+        )
+        
         if selected_vars:
-            fig = sns.pairplot(data=df, vars=selected_vars)
-            st.pyplot(fig)
+            if len(selected_vars) > 4:
+                st.warning("Selecting too many variables may affect performance.")
+            
+            with st.spinner("Generating pairplot..."):
+                fig = sns.pairplot(data=df[selected_vars])
+                st.pyplot(fig)
+
+# Footer
+st.markdown("""
+    ---
+    <div style='text-align: center; color: #666; padding: 1rem;'>
+        Car Data Analysis Dashboard | Created with Streamlit
+    </div>
+""", unsafe_allow_html=True)
