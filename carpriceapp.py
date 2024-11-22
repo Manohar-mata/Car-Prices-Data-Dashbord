@@ -3,6 +3,7 @@ import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 from scipy.stats import pearsonr
+import io  # For capturing df.info() output
 
 # Sidebar navigation
 st.sidebar.title("Navigation")
@@ -29,9 +30,10 @@ if options == "Data Overview":
     st.write(df.head())
 
     st.write("### Basic Information")
-    buffer = []
-    df.info(buf=buffer)
-    st.text("\n".join(buffer))  # Display `info()` output
+    buffer = io.StringIO()  # Create a buffer to capture df.info()
+    df.info(buf=buffer)  # Write df.info() output to the buffer
+    info_text = buffer.getvalue()  # Extract buffer content as a string
+    st.text(info_text)  # Display the captured output
 
     st.write("### Descriptive Statistics")
     st.write(df.describe())
