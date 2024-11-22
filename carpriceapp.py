@@ -41,11 +41,20 @@ if options == "Visualizations":
     st.sidebar.subheader("Visualization Options")
     vis_type = st.sidebar.radio(
         "Select Visualization Type:",
-        ["Scatterplot", "Line Plot", "Boxplot", "Violin Plot", "Pairplot"]
+        ["Scatterplot", "Line Plot", "Boxplot", "Pairplot"]
     )
 
     numeric_df = df.select_dtypes(include=["float64", "int"])
     categorical_columns = df.select_dtypes(include=["object"]).columns
+
+    # Add slider to filter data by a numeric column
+    st.sidebar.subheader("Data Filtering")
+    selected_column = st.sidebar.selectbox("Select column to filter:", numeric_df.columns)
+    min_val, max_val = numeric_df[selected_column].min(), numeric_df[selected_column].max()
+    range_filter = st.sidebar.slider(f"Filter by {selected_column} range:", min_val, max_val, (min_val, max_val))
+
+    # Filter the dataset based on the slider range
+    filtered_data = df[(df[selected_column] >= range_filter[0]) & (df[selected_column] <= range_filter[1])]
 
     # Scatterplot
     if vis_type == "Scatterplot":
@@ -54,8 +63,8 @@ if options == "Visualizations":
         scatter_y = st.selectbox("Select Y-axis variable:", numeric_df.columns)
         if scatter_x and scatter_y:
             fig, ax = plt.subplots()
-            sns.scatterplot(data=numeric_df, x=scatter_x, y=scatter_y, ax=ax)
-            correlation, p_value = pearsonr(numeric_df[scatter_x], numeric_df[scatter_y])
+            sns.scatterplot(data=filtered_data, x=scatter_x, y=scatter_y, ax=ax)
+            correlation, p_value = pearsonr(filtered_data[scatter_x], filtered_data[scatter_y])
             st.write(f"**Pearson Correlation**: {correlation:.2f}")
             st.write(f"**P-value**: {p_value:.2e}")
             st.pyplot(style_plot(fig))
@@ -67,7 +76,7 @@ if options == "Visualizations":
         line_y = st.selectbox("Select Y-axis variable:", numeric_df.columns)
         if line_x and line_y:
             fig, ax = plt.subplots()
-            sns.lineplot(data=numeric_df, x=line_x, y=line_y, ax=ax)
+            sns.lineplot(data=filtered_data, x=line_x, y=line_y, ax=ax)
             st.pyplot(style_plot(fig))
 
     # Boxplot
@@ -77,17 +86,7 @@ if options == "Visualizations":
         box_y = st.selectbox("Select numeric variable (Y-axis):", numeric_df.columns)
         if box_x and box_y:
             fig, ax = plt.subplots()
-            sns.boxplot(data=df, x=box_x, y=box_y, ax=ax)
-            st.pyplot(style_plot(fig))
-
-    # Violin Plot
-    elif vis_type == "Violin Plot":
-        st.write("### Violin Plot")
-        violin_x = st.selectbox("Select categorical variable (X-axis):", categorical_columns)
-        violin_y = st.selectbox("Select numeric variable (Y-axis):", numeric_df.columns)
-        if violin_x and violin_y:
-            fig, ax = plt.subplots()
-            sns.violinplot(data=df, x=violin_x, y=violin_y, ax=ax)
+            sns.boxplot(data=filtered_data, x=box_x, y=box_y, ax=ax)
             st.pyplot(style_plot(fig))
 
     # Pairplot
@@ -95,5 +94,5 @@ if options == "Visualizations":
         st.write("### Pairplot")
         selected_vars = st.multiselect("Select variables for Pairplot:", numeric_df.columns, default=numeric_df.columns[:3])
         if selected_vars:
-            fig = sns.pairplot(data=numeric_df, vars=selected_vars)
+            fig = sns.pairplot(data=filtered_data, vars=selected_vars)
             st.pyplot(style_plot(fig.fig))
