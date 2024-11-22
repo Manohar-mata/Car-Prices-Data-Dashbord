@@ -8,8 +8,8 @@ import io
 
 # Set page config
 st.set_page_config(
-    page_title="Data Analysis Dashboard",
-    page_icon="📊",
+    page_title="Car Price Analysis Dashboard",
+    page_icon="🚗",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -46,10 +46,9 @@ def load_data():
         st.error(f"Error loading data: {str(e)}")
         return None
 
-# Correlation calculation with error handling
+# Safe correlation calculation
 def safe_correlation(x, y):
     try:
-        # Remove any infinite or null values
         mask = ~(np.isinf(x) | np.isinf(y) | np.isnan(x) | np.isnan(y))
         x_clean = x[mask]
         y_clean = y[mask]
@@ -57,13 +56,11 @@ def safe_correlation(x, y):
         if len(x_clean) < 2 or len(y_clean) < 2:
             return 0, 1
         
-        correlation, p_value = stats.pearsonr(x_clean, y_clean)
-        return correlation, p_value
-    except Exception as e:
-        st.warning(f"Could not calculate correlation: {str(e)}")
+        return stats.pearsonr(x_clean, y_clean)
+    except Exception:
         return 0, 1
 
-# Sidebar navigation
+# Sidebar
 with st.sidebar:
     st.title("Navigation")
     options = st.radio(
@@ -80,25 +77,25 @@ if df is None:
 
 # Home page
 if options == "🏠 Home":
-    st.title("Data Analysis Dashboard")
+    st.title("Car Price Analysis Dashboard")
     
     col1, col2 = st.columns(2)
     with col1:
         st.markdown("""
             ### 📌 Key Features
-            - Interactive data exploration
-            - Dynamic visualizations
+            - Interactive car data exploration
+            - Dynamic price visualizations
             - Statistical analysis
-            - Grouped insights
+            - Grouped insights by car features
         """)
     
     with col2:
         st.markdown("""
-            ### 🎯 Quick Stats
-            - Total Records: {}
-            - Total Features: {}
-            - Numeric Columns: {}
-            - Categorical Columns: {}
+            ### 🎯 Dataset Overview
+            - Total Cars: {}
+            - Features: {}
+            - Numeric Features: {}
+            - Categorical Features: {}
         """.format(
             len(df),
             len(df.columns),
@@ -108,7 +105,7 @@ if options == "🏠 Home":
 
 # Data Overview page
 elif options == "📋 Data Overview":
-    st.title("Data Overview")
+    st.title("Car Data Overview")
     
     tab1, tab2, tab3 = st.tabs(["Data Preview", "Data Info", "Statistics"])
     
@@ -125,22 +122,18 @@ elif options == "📋 Data Overview":
 
 # Visualizations page
 elif options == "📊 Visualizations":
-    st.title("Data Visualizations")
+    st.title("Car Data Visualizations")
     
-    # Get numeric columns
     numeric_cols = df.select_dtypes(include=['float64', 'int64']).columns.tolist()
     categorical_cols = df.select_dtypes(include=['object']).columns.tolist()
     
-    tab1, tab2, tab3 = st.tabs(["Correlation Plot", "Scatter Plot", "Box Plot"])
+    tab1, tab2, tab3 = st.tabs(["Correlation Analysis", "Price Relationships", "Category Analysis"])
     
     with tab1:
         if len(numeric_cols) > 1:
-            st.subheader("Correlation Heatmap")
-            
-            # Calculate correlation matrix
+            st.subheader("Feature Correlation Heatmap")
             corr_df = df[numeric_cols].corr()
             
-            # Create heatmap
             fig = go.Figure(data=go.Heatmap(
                 z=corr_df.values,
                 x=corr_df.columns,
@@ -153,56 +146,54 @@ elif options == "📊 Visualizations":
             fig.update_layout(
                 height=600,
                 width=800,
-                title="Correlation Heatmap"
+                title="Feature Correlation Analysis"
             )
             
             st.plotly_chart(fig, use_container_width=True)
         else:
-            st.warning("Not enough numeric columns for correlation analysis")
+            st.warning("Insufficient numeric columns for correlation analysis")
     
     with tab2:
         if len(numeric_cols) > 1:
             col1, col2 = st.columns(2)
             with col1:
-                x_col = st.selectbox("Select X axis", numeric_cols, key='scatter_x')
+                x_col = st.selectbox("Select Feature (X axis)", numeric_cols, key='scatter_x')
             with col2:
-                y_col = st.selectbox("Select Y axis", numeric_cols, key='scatter_y')
+                y_col = st.selectbox("Select Feature (Y axis)", numeric_cols, key='scatter_y')
             
             if x_col and y_col:
-                # Calculate correlation
                 correlation, p_value = safe_correlation(df[x_col], df[y_col])
                 
-                # Create scatter plot
                 fig = px.scatter(
                     df,
                     x=x_col,
                     y=y_col,
-                    title=f"Correlation: {correlation:.2f} (p-value: {p_value:.2e})"
+                    title=f"Relationship Analysis (Correlation: {correlation:.2f}, p-value: {p_value:.2e})"
                 )
                 
                 st.plotly_chart(fig, use_container_width=True)
         else:
-            st.warning("Not enough numeric columns for scatter plot")
+            st.warning("Insufficient numeric columns for relationship analysis")
     
     with tab3:
-        if len(categorical_cols) > 0 and len(numeric_cols) > 0:
+        if categorical_cols and numeric_cols:
             col1, col2 = st.columns(2)
             with col1:
                 cat_col = st.selectbox("Select Category", categorical_cols)
             with col2:
-                num_col = st.selectbox("Select Value", numeric_cols)
+                num_col = st.selectbox("Select Numeric Feature", numeric_cols)
             
             if cat_col and num_col:
                 fig = px.box(
                     df,
                     x=cat_col,
                     y=num_col,
-                    title=f"Distribution of {num_col} by {cat_col}"
+                    title=f"{num_col} Distribution by {cat_col}"
                 )
                 
                 st.plotly_chart(fig, use_container_width=True)
         else:
-            st.warning("Need both categorical and numeric columns for box plot")
+            st.warning("Need both categorical and numeric features for this analysis")
 
 # Statistics page
 elif options == "📈 Statistics":
@@ -220,7 +211,7 @@ elif options == "📈 Statistics":
                 st.warning(f"Could not perform grouping: {str(e)}")
     
     with tab2:
-        dist_col = st.selectbox("Select column:", df.columns)
+        dist_col = st.selectbox("Select feature:", df.columns)
         if dist_col:
             try:
                 if df[dist_col].dtype in ['int64', 'float64']:
@@ -244,7 +235,8 @@ elif options == "📈 Statistics":
 st.markdown("""
     ---
     <div style='text-align: center; color: #666; padding: 1rem;'>
-        Data Analysis Dashboard | Created with Streamlit
+        Car Price Analysis Dashboard | Created with Streamlit
     </div>
 """, unsafe_allow_html=True)
-Last edited just now
+
+Version 2 of 2
