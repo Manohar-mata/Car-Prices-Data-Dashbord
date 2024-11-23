@@ -11,20 +11,48 @@ st.markdown(
     """
     <style>
     .stApp {
-        background: linear-gradient(to bottom right, #f8f9fa, #dce6f5);
+        background: linear-gradient(to bottom right, #f4f6f9, #e1e9f1); /* Light gradient background */
         font-family: 'Arial', sans-serif;
     }
     
     h1, h2, h3 {
-        color: #002147;
+        color: #2c3e50;  /* Dark blue for headings */
         font-weight: bold;
     }
 
     .stButton > button {
-        background-color: #007bff;
+        background-color: #3498db;  /* Blue button */
         color: white;
         border-radius: 5px;
         font-size: 16px;
+    }
+
+    .stDataFrame {
+        background-color: #ffffff;  /* White background for data tables */
+        border: 1px solid #ccc;  /* Light gray border */
+    }
+
+    .stText {
+        color: #34495e;  /* Dark gray text for readability */
+    }
+
+    .stSidebar {
+        background-color: #f8f9fa;  /* Light gray sidebar */
+    }
+
+    .stSelectbox, .stSlider, .stRadio, .stMultiselect {
+        background-color: #ffffff;  /* White background for input widgets */
+        border: 1px solid #ccc;  /* Light gray border */
+    }
+    
+    .stTextInput, .stNumberInput, .stTextArea {
+        background-color: #ffffff;  /* White background for text inputs */
+        border: 1px solid #ccc;  /* Light gray border */
+    }
+    
+    .stFileUploader {
+        background-color: #ffffff;
+        border: 1px solid #ccc;
     }
     </style>
     """,
