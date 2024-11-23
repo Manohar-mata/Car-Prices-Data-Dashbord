@@ -16,24 +16,23 @@ def style_plot(fig):
     fig.patch.set_facecolor('#f5f5f5')
     return fig
 
+# Sidebar navigation
+st.sidebar.title("Navigation")
+options = st.sidebar.radio("Go to", ["Home", "Data Overview", "Visualizations", "High Correlations"])
+
 # Load the data
 df = load_data()
 
-# Define numeric and categorical columns globally
+# Extract numeric and categorical columns
 numeric_df = df.select_dtypes(include=["float64", "int"])
 categorical_columns = df.select_dtypes(include=["object"]).columns
 
-# Sidebar navigation
-st.sidebar.title("Navigation")
-options = st.sidebar.radio("Go to", ["Home", "Data Overview", "Visualizations", "Data Distribution", "Correlation Heatmap"])
-
-# Home Section
+# Title and Home
 if options == "Home":
     st.title("Data Analysis Dashboard")
-    st.write("Welcome to the Data Analysis Dashboard!")
-    st.write("Use the sidebar to explore the dataset, visualize relationships, and uncover insights.")
+    st.write("Welcome to the Data Analysis Dashboard! Use the sidebar to explore the dataset and visualize relationships.")
 
-# Data Overview Section
+# Data Overview
 if options == "Data Overview":
     st.header("Data Overview")
     st.write("### Dataset Preview")
@@ -41,19 +40,19 @@ if options == "Data Overview":
     st.write("### Descriptive Statistics")
     st.write(df.describe())
 
-# Visualizations Section
+# Visualizations
 if options == "Visualizations":
     st.sidebar.subheader("Visualization Options")
     vis_type = st.sidebar.radio(
         "Select Visualization Type:",
-        ["Scatterplot", "Line Plot", "Boxplot", "Pairplot"]
+        ["Scatterplot", "Line Plot", "Boxplot", "Pairplot", "Heatmap"]
     )
 
     # Add slider to filter data by a numeric column
     st.sidebar.subheader("Data Filtering")
     selected_column = st.sidebar.selectbox("Select column to filter:", numeric_df.columns)
     min_val, max_val = numeric_df[selected_column].min(), numeric_df[selected_column].max()
-    range_filter = st.sidebar.slider(f"Filter by {selected_column} range:", min_val, max_val, (min_val, max_val))
+    range_filter = st.sidebar.slider(f"Filter by {selected_column} range:", float(min_val), float(max_val), (float(min_val), float(max_val)))
 
     # Filter the dataset based on the slider range
     filtered_data = df[(df[selected_column] >= range_filter[0]) & (df[selected_column] <= range_filter[1])]
@@ -99,21 +98,33 @@ if options == "Visualizations":
             fig = sns.pairplot(data=filtered_data, vars=selected_vars)
             st.pyplot(style_plot(fig.fig))
 
-# Data Distribution Section
-if options == "Data Distribution":
-    st.header("Data Distribution")
-    dist_column = st.sidebar.selectbox("Select column for distribution:", numeric_df.columns)
-    if dist_column:
-        fig, ax = plt.subplots()
-        sns.histplot(data=df, x=dist_column, kde=True, ax=ax)
-        st.write(f"### Distribution of {dist_column}")
+    # Heatmap
+    elif vis_type == "Heatmap":
+        st.write("### Correlation Heatmap")
+        fig, ax = plt.subplots(figsize=(10, 6))
+        sns.heatmap(filtered_data[numeric_df.columns].corr(), annot=True, fmt=".2f", cmap="coolwarm", ax=ax)
         st.pyplot(style_plot(fig))
 
-# Correlation Heatmap Section
-if options == "Correlation Heatmap":
-    st.header("Correlation Heatmap")
-    st.write("### Correlation Matrix")
+# High Correlations
+if options == "High Correlations":
+    st.header("Highly Correlated Variables")
+    st.write("### Variables with Correlation > 0.5")
+    
+    # Calculate correlations for numeric columns
     correlation_matrix = numeric_df.corr()
-    fig, ax = plt.subplots(figsize=(10, 6))
-    sns.heatmap(correlation_matrix, annot=True, fmt=".2f", cmap="coolwarm", ax=ax)
-    st.pyplot(style_plot(fig))
+    
+    # Get pairs of correlations greater than 0.5, excluding self-correlations
+    high_correlations = (
+        correlation_matrix.stack()
+        .reset_index()
+        .rename(columns={0: "Correlation", "level_0": "Variable 1", "level_1": "Variable 2"})
+    )
+    high_correlations = high_correlations[
+        (high_correlations["Variable 1"] != high_correlations["Variable 2"]) & (high_correlations["Correlation"] > 0.5)
+    ]
+
+    # Drop duplicate pairs (e.g., (A, B) and (B, A))
+    high_correlations = high_correlations.drop_duplicates(subset=["Correlation"])
+
+    # Display high correlations
+    st.dataframe(high_correlations)
