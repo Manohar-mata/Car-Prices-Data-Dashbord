@@ -23,7 +23,7 @@ options = st.sidebar.radio("Go to", ["Home", "Data Overview", "Visualizations", 
 # Load the data
 df = load_data()
 
-# Extract numeric and categorical columns
+# Numeric and categorical columns
 numeric_df = df.select_dtypes(include=["float64", "int"])
 categorical_columns = df.select_dtypes(include=["object"]).columns
 
@@ -45,7 +45,7 @@ if options == "Visualizations":
     st.sidebar.subheader("Visualization Options")
     vis_type = st.sidebar.radio(
         "Select Visualization Type:",
-        ["Scatterplot", "Line Plot", "Boxplot", "Pairplot", "Heatmap"]
+        ["Scatterplot", "Line Plot", "Boxplot", "Pairplot"]
     )
 
     # Add slider to filter data by a numeric column
@@ -98,17 +98,10 @@ if options == "Visualizations":
             fig = sns.pairplot(data=filtered_data, vars=selected_vars)
             st.pyplot(style_plot(fig.fig))
 
-    # Heatmap
-    elif vis_type == "Heatmap":
-        st.write("### Correlation Heatmap")
-        fig, ax = plt.subplots(figsize=(10, 6))
-        sns.heatmap(filtered_data[numeric_df.columns].corr(), annot=True, fmt=".2f", cmap="coolwarm", ax=ax)
-        st.pyplot(style_plot(fig))
-
-# High Correlations
+# Heatmap for Columns with Correlation > 0.5
 if options == "High Correlations":
     st.header("Highly Correlated Variables")
-    st.write("### Variables with Correlation > 0.5")
+    st.write("### Heatmap for Correlations > 0.5")
     
     # Calculate correlations for numeric columns
     correlation_matrix = numeric_df.corr()
@@ -126,5 +119,17 @@ if options == "High Correlations":
     # Drop duplicate pairs (e.g., (A, B) and (B, A))
     high_correlations = high_correlations.drop_duplicates(subset=["Correlation"])
 
-    # Display high correlations
-    st.dataframe(high_correlations)
+    # Identify columns involved in high correlations
+    correlated_columns = list(set(high_correlations["Variable 1"]).union(set(high_correlations["Variable 2"])))
+
+    # Filter correlation matrix for these columns
+    if correlated_columns:
+        filtered_corr_matrix = correlation_matrix.loc[correlated_columns, correlated_columns]
+
+        # Display the heatmap
+        st.write("### Heatmap of Highly Correlated Variables")
+        fig, ax = plt.subplots(figsize=(10, 8))
+        sns.heatmap(filtered_corr_matrix, annot=True, fmt=".2f", cmap="coolwarm", ax=ax)
+        st.pyplot(style_plot(fig))
+    else:
+        st.write("No correlations greater than 0.5 found.")
