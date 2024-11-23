@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
-from scipy.stats import pearsonr
 
 # Page configuration
 st.set_page_config(page_title="Data Analysis Dashboard", layout="wide")
@@ -56,4 +55,30 @@ if options == "Home":
 elif options == "Data Overview":
     st.header("Data Overview")
     st.dataframe(df.head())
-    st.write(f"**Total Records:** {
+    st.write(f"**Total Records:** {len(df)}")
+    st.write(f"**Features:** {len(df.columns)}")
+    st.write(f"**Numeric Features:** {len(numeric_df.columns)}")
+    st.write(f"**Categorical Features:** {len(categorical_columns)}")
+
+# Visualizations Section
+elif options == "Visualizations":
+    st.header("Visualizations")
+    vis_type = st.selectbox("Select Visualization Type:", ["Scatterplot", "Boxplot"])
+    col1, col2 = st.columns(2)
+    with col1:
+        x_var = st.selectbox("X-axis Variable:", numeric_df.columns)
+    with col2:
+        y_var = st.selectbox("Y-axis Variable:", numeric_df.columns)
+    
+    if vis_type == "Scatterplot":
+        fig, ax = plt.subplots()
+        sns.scatterplot(data=df, x=x_var, y=y_var, ax=ax)
+        st.pyplot(fig)
+
+# High Correlations Section
+elif options == "High Correlations":
+    st.header("High Correlations")
+    corr_matrix = numeric_df.corr()
+    fig, ax = plt.subplots(figsize=(10, 6))
+    sns.heatmap(corr_matrix, annot=True, fmt=".2f", cmap="coolwarm", ax=ax)
+    st.pyplot(fig)
